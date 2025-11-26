@@ -41,14 +41,18 @@ Collection<E>
 ```
 
 
-### 🗂 Separate Hierarchy: Map
+### 🗂 Map Hierarchy (clean)
 
-                        🔷 Map
-          ┌──────────────┼──────────────┐
-          │              │              │
-      ⬛ HashMap      ⬛ LinkedHashMap  ⬛ TreeMap
-          │              │              │
-      ⬛ WeakHashMap  ⬛ IdentityHashMap ⬛ ConcurrentHashMap
+                          Map
+                           ▲
+                           │
+         ┌─────────────────┴─────────────────┐
+         │                                   │
+       HashMap                            SortedMap
+         │                                   │
+         │                                   │
+      LinkedHashMap                        TreeMap
+
 
 
 
@@ -308,8 +312,115 @@ public class CollectionExample {
 - `offer`/`poll` are **safe alternatives** to `add`/`remove` — they **return a status or null instead of throwing exceptions**.
 
 
+## Map<K, V> — Quick Revision
+
+**What it is:**  
+`Map<K, V>` stores **key–value pairs** where **keys are unique** and values may repeat.  
+Provides **fast key-based lookup, insertion, deletion, and updates**.  
+(It does **not** extend `Collection` because it deals with pairs, not single elements.)
+
+**Core Methods:**
+
+- **Insert / Update**
+  - `put(K key, V value)` → Adds or replaces a key–value pair.  
+  - `putIfAbsent(K key, V value)` → Adds only if the key is not already present.
+
+- **Access**
+  - `get(Object key)` → Returns value for the key (null if missing).  
+  - `getOrDefault(Object key, V defaultValue)` → Returns value or a default fallback.
+
+- **Delete**
+  - `remove(Object key)` → Removes entry by key.  
+  - `remove(Object key, Object value)` → Removes only if key maps to the given value.
+
+- **Check**
+  - `containsKey(Object key)` → Key existence check.  
+  - `containsValue(Object value)` → Value existence check.
+
+- **Views**
+  - `keySet()` → Returns a `Set` of keys.  
+  - `values()` → Returns a `Collection` of values.  
+  - `entrySet()` → Returns a `Set` of key–value pairs (`Map.Entry<K, V>`).
+
+**One-liner what Map does:**  
+Provides **unique-key storage with fast lookup** and convenient views (`keySet`, `values`, `entrySet`) for iteration.
 
 
+
+## HashMap<K, V> — Quick Revision
+
+**Internal Working:**  
+- Backed by a **hash table**: `Node<K,V>[] table`, so uses and array internally for nodes storage where each bucket holds:
+- Each `Node` stores: `hash`, `key`, `value`, and `next` (enabling linked lists).
+- Before java 8 upto 8 nodes we use linked list, after java 8 above 8 nodes uses a balanced red-black tree which means searching O(0) to log(n)
+
+**Flow of Insertion (put):**  
+1. Compute the **hash** of the key using `hash()` (spreads bits to reduce collisions).  
+2. Compute **bucket index**: `(hash & (capacity - 1))`.  
+3. If bucket is **empty** → create node and insert.  
+4. If key already exists in bucket → **update value**.  
+5. If collision occurs → append to **linked list** or convert to **tree** if chain is long.  
+6. If size exceeds `capacity × loadFactor (0.75)` → **resize** by doubling capacity and **rehashing** entries.
+
+
+**Time Complexity:**  
+- `put`, `get`, `remove` → **O(1)** average (hash-based).  
+- Worst case → **O(log n)** with tree bins (or **O(n)** without treeification).
+
+
+
+## LinkedHashMap<K, V> — Quick Revision
+
+**What it is:**  
+`LinkedHashMap` is a `HashMap` with a **doubly-linked list** added to every entry, preserving **insertion order** (or **access order** when enabled).  
+It extends `HashMap`, reusing all hashing and bucket logic.
+
+---
+
+### Internal Working
+
+- Uses the same **hash table** structure as `HashMap`:  
+  `Node<K,V>[] table`  
+- But each entry is a **LinkedHashMap.Entry**, which extends `HashMap.Node` and adds:  
+  - `before` → previous entry in iteration order  
+  - `after` → next entry in iteration order  
+- These pointers form a **global doubly-linked list** connecting **all entries**, regardless of bucket.
+
+Result:  
+Two internal structures exist simultaneously:
+1. **Hash bucket chain** (via `next`) → for O(1) lookups  
+2. **Doubly-linked list** (via `before`/`after`) → for predictable iteration order  
+
+---
+
+### Flow of Insertion (put)
+
+1. Compute **hash** and bucket index (same as HashMap).  
+2. Insert entry into the correct bucket (handle collisions).  
+3. Link the entry at the **end of the doubly-linked list**:  
+   - `tail.after = newEntry`  
+   - `newEntry.before = tail`  
+   - `tail = newEntry`  
+4. If `accessOrder = true`, a `get()` will also move that entry to the end (LRU-like behavior).  
+5. Resizing happens exactly like HashMap (capacity doubles, entries rehashed).
+
+---
+
+### What LinkedHashMap Adds (beyond HashMap)
+
+- **Ordering guarantee**:
+  - Insertion order (default)  
+  - Access order (`new Lin
+
+### Time Complexity
+
+- `put()` → **O(1)** average  
+- `get()` → **O(1)** average  
+- `remove()` → **O(1)** average  
+- Iteration → **O(n)** but **ordered** (via linked list)  
+
+**Reason:**  
+Hash lookups are O(1), and linking/unlinking from the doubly-linked list is O(1).
 
 
 
