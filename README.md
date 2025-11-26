@@ -11,37 +11,33 @@ It includes **interfaces**, **implementing classes**, and **algorithms** that si
 
 ---
 
-
-## 1. Java Collection interfaces and classes
-
-```text
+## Java Collections Framework 
+```
 Iterable<E>
-   └── Collection<E>
-
+   ▲
+   │
 Collection<E>
-├── List<E>
-│     ├── ArrayList<E>
-│     ├── LinkedList<E>
-│     ├── Vector<E> (legacy)
-│     │     └── Stack<E> (legacy)
-|
-│
-├── Set<E>
-│     ├── HashSet<E>
-│     │     └── LinkedHashSet<E>
-│     ├── TreeSet<E> (implements NavigableSet)
-│     ├── EnumSet<E>
-│     
-│
-└── Queue<E>
-      ├── PriorityQueue<E>
-      ├── ArrayDeque<E>
-      ├── LinkedList<E> (also implements List)
+   ├── List<E>
+   │     ├── ArrayList<E>
+   │     ├── LinkedList<E>
+   │     ├── Vector<E> (legacy)
+   │     │     └── Stack<E> (legacy)
+   │
+   ├── Set<E>
+   │     ├── HashSet<E>
+   │     │     └── LinkedHashSet<E>
+   │     ├── TreeSet<E>     (NavigableSet → SortedSet → Set)
+   │     └── EnumSet<E>     (specialized)
+   │
+   └── Queue<E>
+         ├── PriorityQueue<E>
+         ├── Deque<E>        (interface)
+         │      └── ArrayDeque<E>
+         └── LinkedList<E>   (implements Queue AND Deque AND List)
 
 ```
 
-
-### 🗂 Map Hierarchy (clean)
+### 🗂 Map Hierarchy
 
                           Map
                            ▲
@@ -225,15 +221,131 @@ public class CollectionExample {
 - `search(Object o)` → Returns 1-based position from top of stack.
 
 
-
-## Set<E> 
+## Set<E> — Quick Revision
 
 **What it is:**  
-`Set<E>` is a **collection of unique elements**. It extends `Collection<E>` but **does not allow duplicates** and **does not provide positional access**.
+`Set<E>` is a `Collection` that **does not allow duplicate elements** and typically does **not guarantee any specific order** (depends on implementation).
+It focuses on **uniqueness**, not indexing or positional access.
 
-**What it adds beyond Collection:**  
-- **Uniqueness enforcement:** Automatically prevents duplicate elements.  
-- No new methods are added; `Set` mainly **specializes Collection behavior** for uniqueness.
+**What Set Adds Beyond Collection:**  
+- No new method signatures; all methods come from `Collection`.  
+- Adds **stronger semantics**:
+  - `add(E e)` → adds only if the element is not already present.  
+  - Equality and hashing follow **set equality rules**.  
+- Iteration order depends on implementation:
+  - `HashSet` → unordered  
+  - `LinkedHashSet` → insertion order  
+  - `TreeSet` → sorted order  
+
+## HashSet<E> — Quick Revision
+
+**Internal Working:**  
+- `HashSet` is backed internally by a **HashMap**:  
+- Each element added to the HashSet becomes a **key** in the HashMap, with a dummy value (`PRESENT`).  
+- HashMap uses a **hash table** (array of buckets) where each bucket may contain:
+  - a single node,  
+  - a **linked list** (for collisions), or  
+  - a **red–black tree** (Java 8+ when collisions grow large).  
+- Insertion uses hashing → find bucket → check for equality → insert if not already present.  
+- HashSet inherits **resize behavior** from HashMap (capacity doubles when size exceeds 75% load factor).
+
+---
+Its unique behavior comes solely from **using HashMap internally**, which enforces:
+- **Uniqueness**  
+- **Fast average lookup**  
+- **No guaranteed order**
+---
+
+### Time Complexity
+
+- `add(E e)` → **O(1)** average (hash table insert)  
+- `remove(Object o)` → **O(1)** average  
+- `contains(Object o)` → **O(1)** average  
+- Worst-case for these → **O(log n)** (tree bins) or **O(n)** without treeification
+
+**Reason:**  
+HashMap provides constant-time operations through hashing and bucket indexing.
+
+
+
+## LinkedHashSet<E> — Quick Revision
+
+**Internal Working:**  
+- `LinkedHashSet` is built on top of a **LinkedHashMap**.  
+- Each element is stored as a **key** in a LinkedHashMap with a dummy value (`PRESENT`).  
+- Because LinkedHashMap maintains a **doubly-linked list** across all entries,  
+  `LinkedHashSet` preserves **insertion order** of elements.  
+- Internally, each entry has:
+  - `next` → for the hash bucket chain (collision handling)  
+  - `before` / `after` → for the global **doubly-linked list**  
+- Hash table + doubly-linked list work together to provide:
+  - **Fast lookups** (HashMap)  
+  - **Ordered iteration** (Linked list of entries)
+    
+---
+
+### Functions Added Beyond Set Interface
+
+- `LinkedHashSet` adds **no new public methods**.  
+- All methods come from `Set` and `Collection`.  
+- What it adds is **behavioral**:
+  - Guarantees **insertion-order iteration**  
+  - Faster, predictable traversal compared to HashSet  
+
+---
+
+### Time Complexity
+
+- `add(E e)` → **O(1)** average  
+- `remove(Object o)` → **O(1)** average  
+- `contains(Object o)` → **O(1)** average  
+- Iteration → **O(n)** in **insertion order**
+
+**Reason:**  
+Hash table gives O(1) average operations, while the doubly-linked list ensures stable ordering with constant-time linking/unlinking.
+
+
+## TreeSet<E> — Quick Revision
+
+**Internal Working:**  
+- `TreeSet` is backed internally by a **TreeMap**.  
+- Each element stored becomes a **key** in the TreeMap with a dummy value.  
+- TreeMap uses a **Red–Black Tree**, a self-balancing BST, which keeps elements **sorted** (natural order or custom Comparator).  
+- Rotations and recoloring ensure tree height stays **O(log n)**.
+
+---
+
+### Functions Added Beyond Set Interface  
+TreeSet adds **no new public methods**; it inherits methods from `SortedSet` and `NavigableSet`, providing **sorted behavior** and **navigation**:
+
+#### 🔹 **Sorted View Methods**
+- `subSet(from, to)` → View of elements in the range `[from, to)`.  
+- `headSet(to)` → All elements **less than** `to`.  
+- `tailSet(from)` → All elements **greater than or equal to** `from`.
+
+#### 🔹 **Navigation Methods**
+- `first()` → Smallest (lowest) element.  
+- `last()` → Largest (highest) element.  
+- `higher(E e)` → Next higher element strictly greater than `e`.  
+- `lower(E e)` → Next lower element strictly less than `e`.  
+- `ceiling(E e)` → Smallest element ≥ `e`.  
+- `floor(E e)` → Largest element ≤ `e`.
+
+These methods are possible because TreeSet maintains **sorted ordering** via a Red–Black Tree.
+
+---
+
+### Time Complexity
+
+- `add(E e)` → **O(log n)**  
+- `remove(Object o)` → **O(log n)**  
+- `contains(Object o)` → **O(log n)**  
+- Iteration → **O(n)** in **sorted order**
+
+**Reason:**  
+All operations depend on BST traversal + Red–Black balancing.
+
+
 
 
 
@@ -251,6 +363,7 @@ public class CollectionExample {
 
 **One-liner why:**  
 - Adds **head/tail-specific methods** for FIFO semantics and safe alternatives to exceptions.
+
 
 
 ## PriorityQueue<E> — Quick Revision
@@ -421,6 +534,38 @@ Two internal structures exist simultaneously:
 
 **Reason:**  
 Hash lookups are O(1), and linking/unlinking from the doubly-linked list is O(1).
+
+
+
+## TreeMap<K, V> — Quick Revision
+
+**What it is:**  
+`TreeMap` is a `SortedMap` and `NavigableMap` implementation that stores keys in **sorted order** (natural or via custom Comparator).  
+Internally, it uses a **self-balancing Red–Black Tree**, not an array or hash table.
+
+This ensures predictable performance.
+
+### Functional Behavior (What It Adds)
+
+Because keys are sorted, TreeMap provides powerful navigation methods:
+- ceilingKey(k) → smallest key ≥ k
+- floorKey(k) → largest key ≤ k
+- higherKey(k) → next greater key
+- lowerKey(k) → next smaller key
+
+- Iteration in **sorted order** always
+
+No hashing, no collision chains, no linked lists.
+---
+### Time Complexity
+
+- `put()` → **O(log n)** (tree insert + rebalance)  
+- `get()` → **O(log n)** (tree search)  
+- `remove()` → **O(log n)**  
+- Iteration → **O(n)** in sorted order  
+
+**Reason:** The Red–Black Tree maintains balanced height.
+
 
 
 
